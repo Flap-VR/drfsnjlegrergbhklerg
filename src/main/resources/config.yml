@@ -1,0 +1,137 @@
+# ==========================================================================
+#  RTPQ - everything below is configurable.
+#  Text uses MiniMessage (https://docs.advntr.dev/minimessage/format.html)
+#  Placeholders (case-insensitive): %player% %target% %seconds% %expire%
+#  Sounds/particles use vanilla registry names, e.g. "entity.wither.spawn"
+#  Run /rtpq reload after editing.
+# ==========================================================================
+
+settings:
+  countdown-seconds: 5          # how long you must stand still
+  movement-tolerance: 0.1       # blocks of drift allowed (looking around is always fine)
+  cancel-on-damage: true        # taking damage cancels the countdown
+  cooldown-seconds: 30          # cooldown after a successful teleport
+  request-cooldown-seconds: 5   # anti-spam between sending requests
+  request-expire-seconds: 60
+  max-pending-per-target: 5     # max simultaneous incoming requests per player
+  cross-world: true             # allow teleporting between worlds
+  blocked-worlds: []            # worlds where /rtpq can't be started, e.g. ["world_the_end"]
+  arrive-notify: true           # tell the target someone arrived
+
+# Defaults used when a player has no stored preference (see README for the settings-plugin hook)
+defaults:
+  allow-requests: true
+  allow-random: true
+
+random:
+  excluded-gamemodes: ["SPECTATOR"]
+  excluded-worlds: []
+  notify-target: false          # ping the picked player when someone random-teleports to them
+
+titles:
+  countdown:
+    title: "<green><bold>Player Found To RTPQ!"
+    subtitle: "<gray>Don't move for <yellow><bold>%seconds%</bold></yellow> Seconds!"
+    fade-in-ms: 0
+    stay-ms: 1200
+    fade-out-ms: 0
+  cancelled:
+    title: "<red><bold>RTPQ Cancelled"
+    subtitle: "<gray>You moved!"
+    fade-in-ms: 100
+    stay-ms: 1500
+    fade-out-ms: 400
+  success:
+    title: "<dark_purple><bold>RTPQ!"
+    subtitle: "<light_purple>You warped to <white>%target%"
+    fade-in-ms: 100
+    stay-ms: 1500
+    fade-out-ms: 600
+
+actionbar:
+  enabled: true
+  length: 20
+  filled-char: "█"
+  empty-char: "░"
+  format: "<dark_gray>[<green>%filled%<dark_gray>%empty%<dark_gray>] <yellow>%seconds%s"
+
+sounds:
+  found:
+    sound: "block.beacon.activate"
+    volume: 0.6
+    pitch: 1.6
+  tick:                          # pitch climbs from start to end over the countdown
+    sound: "block.note_block.pling"
+    volume: 0.7
+    pitch-start: 0.8
+    pitch-end: 2.0
+  cancel:                        # played when you move
+    sound: "entity.wandering_trader.no"
+    volume: 1.0
+    pitch: 1.0
+  success:                       # played on a successful rtpq
+    sound: "entity.wither.spawn"
+    volume: 0.8
+    pitch: 1.0
+  request:                       # played to the target when a request arrives
+    sound: "entity.experience_orb.pickup"
+    volume: 1.0
+    pitch: 1.2
+
+effects:
+  countdown:                     # swirling helix around you while you wait
+    enabled: true
+    particle: "end_rod"
+    strands: 3
+    radius: 1.0
+    height: 2.0
+    converge: true               # helix tightens as the countdown completes
+  finish:                        # burst at both the departure and arrival points
+    enabled: true
+    particle: "end_rod"
+    core-particle: "firework"
+    ring-points: 36
+    ring-radius: 1.5
+    lightning-effect: true       # harmless visual lightning + thunder at arrival
+
+messages:
+  prefix: "<dark_gray>[<gradient:#a855f7:#22d3ee>RTPQ</gradient><dark_gray>] <gray>"
+  players-only: "<red>Only players can use that."
+  no-permission: "<red>You don't have permission."
+  reloaded: "<green>Config reloaded."
+  player-not-found: "<red>Player <white>%player%</white> isn't online."
+  no-players: "<red>No eligible players to RTPQ to right now."
+  already-active: "<red>You're already mid-RTPQ. Use <white>/rtpq cancel</white>."
+  world-blocked: "<red>You can't RTPQ from this world."
+  cooldown: "<red>Wait <white>%seconds%s</white> before using RTPQ again."
+  request-self: "<red>You can't send a request to yourself."
+  requests-disabled: "<red><white>%player%</white> isn't accepting RTPQ requests."
+  request-cooldown: "<red>Slow down! Wait <white>%seconds%s</white> before sending another request."
+  request-duplicate: "<red>You already have a pending request to <white>%player%</white>."
+  request-full: "<red><white>%player%</white> has too many pending requests."
+  request-sent: "<green>Request sent to <white>%player%</white>. It expires in %expire%s."
+  request-received: "<light_purple>%player%</light_purple> wants to RTPQ to you. <gray>(expires in %expire%s)"
+  request-buttons: "<click:run_command:'/rtpq accept %player%'><hover:show_text:'<green>Click to accept'><green><bold>[ACCEPT]</bold></green></hover></click> <click:run_command:'/rtpq deny %player%'><hover:show_text:'<red>Click to deny'><red><bold>[DENY]</bold></red></hover></click>"
+  request-expired-sender: "<gray>Your request to <white>%player%</white> expired."
+  request-expired-target: "<gray>The request from <white>%player%</white> expired."
+  request-target-left: "<gray>Your request was removed because <white>%player%</white> left."
+  no-request: "<red>You have no pending request to answer."
+  sender-offline: "<red>That player went offline."
+  sender-busy: "<red><white>%player%</white> is already teleporting."
+  sender-cant: "<red><white>%player%</white> can't teleport right now."
+  request-accepted: "<green>You accepted <white>%player%</white>'s request."
+  request-accepted-sender: "<green><white>%player%</white> accepted your request!"
+  request-denied: "<gray>You denied <white>%player%</white>'s request."
+  request-denied-sender: "<red><white>%player%</white> denied your request."
+  request-cancelled: "<gray>Cancelled your outgoing request(s)."
+  nothing-to-cancel: "<red>You have nothing to cancel."
+  coming-notify: "<light_purple>%player%</light_purple> is arriving in <white>%seconds%s</white>."
+  random-notify: "<light_purple>%player%</light_purple> is RTPQing to you!"
+  cancel-moved: "<red>RTPQ cancelled because you moved."
+  cancel-damage: "<red>RTPQ cancelled because you took damage."
+  cancel-manual: "<gray>RTPQ cancelled."
+  cancel-target-left: "<red>RTPQ cancelled, your target left."
+  cancel-cross-world: "<red>RTPQ cancelled, cross-world teleports are disabled."
+  teleported: "<green>Warped to <white>%target%</white>!"
+  teleport-failed: "<red>The teleport failed."
+  arrived: "<light_purple>%player%</light_purple> just arrived."

@@ -1,0 +1,31 @@
+name: RTPQ
+version: 1.0.0
+main: dev.rtpq.RtpqPlugin
+api-version: '1.21'
+description: Random teleport to a player, plus teleport requests, with a cinematic no-move countdown.
+commands:
+  rtpq:
+    description: Teleport to a random player, or request to teleport to a specific one.
+    usage: /<command> [player|accept|deny|cancel|reload]
+permissions:
+  rtpq.use:
+    description: Use /rtpq (random) and accept/deny requests
+    default: true
+  rtpq.request:
+    description: Send /rtpq <player> requests
+    default: true
+  rtpq.exempt:
+    description: Never picked by random /rtpq
+    default: false
+  rtpq.bypass.cooldown:
+    description: Ignore the teleport cooldown
+    default: op
+  rtpq.bypass.countdown:
+    description: Teleport instantly, no countdown
+    default: op
+  rtpq.bypass.prefs:
+    description: Send requests even if the target disabled them
+    default: op
+  rtpq.reload:
+    description: Reload the config
+    default: op
