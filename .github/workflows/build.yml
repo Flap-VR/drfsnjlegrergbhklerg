@@ -13,59 +13,62 @@ permissions:
 jobs:
   discover:
     name: Find plugins
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       plugins: ${{ steps.find.outputs.plugins }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
  
       - name: List folders containing a pom.xml
         id: find
         run: |
-          plugins=$(find . -mindepth 2 -maxdepth 2 -name pom.xml -not -path './.git/*' -printf '%h\n' \
-            | sed 's|^\./||' | sort | jq -R -s -c 'split("\n")[:-1]')
+          plugins=$(find . -maxdepth 3 -name pom.xml -not -path '*/target/*' -not -path './.git/*' -printf '%h\n' \
+            | sort | jq -R -s -c 'split("\n")[:-1] | map({path: ., name: (if . == "." then "plugin" else (sub("^\\./"; "") | gsub("/"; "-")) end)})')
           echo "Found: $plugins"
+          if [ "$plugins" = "[]" ]; then
+            echo "::error::No pom.xml found. Commit your plugin folders (each with a pom.xml) to the repo."
+            exit 1
+          fi
           echo "plugins=$plugins" >> "$GITHUB_OUTPUT"
  
   build:
-    name: Build ${{ matrix.plugin }}
+    name: Build ${{ matrix.name }}
     needs: discover
-    if: needs.discover.outputs.plugins != '[]'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false          # one broken plugin won't stop the others
       matrix:
-        plugin: ${{ fromJson(needs.discover.outputs.plugins) }}
+        include: ${{ fromJson(needs.discover.outputs.plugins) }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
  
       - name: Set up JDK 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '21'
           cache: maven
  
       - name: Build
-        run: mvn -B -f "${{ matrix.plugin }}/pom.xml" clean package
+        run: mvn -B -f "${{ matrix.path }}/pom.xml" clean package
  
       - name: Upload jar
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
-          name: ${{ matrix.plugin }}
+          name: ${{ matrix.name }}
           path: |
-            ${{ matrix.plugin }}/target/*.jar
-            !${{ matrix.plugin }}/target/original-*.jar
+            ${{ matrix.path }}/target/*.jar
+            !${{ matrix.path }}/target/original-*.jar
           if-no-files-found: error
  
   release:
     name: Publish release
     needs: build
     if: startsWith(github.ref, 'refs/tags/v')
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Download all plugin jars
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           path: artifacts
  
