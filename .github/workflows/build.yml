@@ -1,0 +1,77 @@
+name: Build plugins
+ 
+on:
+  push:
+    branches: [main, master]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+ 
+permissions:
+  contents: write   # required for the release job
+ 
+jobs:
+  discover:
+    name: Find plugins
+    runs-on: ubuntu-latest
+    outputs:
+      plugins: ${{ steps.find.outputs.plugins }}
+    steps:
+      - uses: actions/checkout@v4
+ 
+      - name: List folders containing a pom.xml
+        id: find
+        run: |
+          plugins=$(find . -mindepth 2 -maxdepth 2 -name pom.xml -not -path './.git/*' -printf '%h\n' \
+            | sed 's|^\./||' | sort | jq -R -s -c 'split("\n")[:-1]')
+          echo "Found: $plugins"
+          echo "plugins=$plugins" >> "$GITHUB_OUTPUT"
+ 
+  build:
+    name: Build ${{ matrix.plugin }}
+    needs: discover
+    if: needs.discover.outputs.plugins != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false          # one broken plugin won't stop the others
+      matrix:
+        plugin: ${{ fromJson(needs.discover.outputs.plugins) }}
+    steps:
+      - uses: actions/checkout@v4
+ 
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+ 
+      - name: Build
+        run: mvn -B -f "${{ matrix.plugin }}/pom.xml" clean package
+ 
+      - name: Upload jar
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.plugin }}
+          path: |
+            ${{ matrix.plugin }}/target/*.jar
+            !${{ matrix.plugin }}/target/original-*.jar
+          if-no-files-found: error
+ 
+  release:
+    name: Publish release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all plugin jars
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+ 
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/**/*.jar
+          generate_release_notes: true
+ 
